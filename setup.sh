@@ -18,6 +18,7 @@ cp ./run_pat.sh ${HOME}/bin/run_pat.sh
 chmod u+x ${HOME}/bin/run_pat.sh;
 cp ./runpat.desktop ${HOME}/Desktop/runpat.desktop
 chmod u+x ./gps_time_setup.sh
+mkdir -p ./install
 
 read -p 'Enter your callsign: ' callsign;
 
@@ -27,6 +28,7 @@ if [ -f "/usr/local/bin/rigctl" ]; then
    echo 'hamlib installed';
 else
     # pull down hamlib 4.0 for the IC-705
+    cd install
     wget https://sourceforge.net/projects/hamlib/files/hamlib/4.0/hamlib-4.0.tar.gz
     tar -xzf hamlib-4.0.tar.gz
     cd hamlib-4.0
@@ -34,7 +36,7 @@ else
     make
     sudo make install
     sudo ldconfig
-    cd ..
+    cd ../..
 fi
 
 echo;
@@ -42,6 +44,7 @@ echo 'Downloading and installing FLRIG...';
 if [ -f "/usr/local/bin/flrig" ]; then
     echo 'flrig installed';
 else
+    cd install
     wget http://www.w1hkj.com/files/flxmlrpc/flxmlrpc-0.1.4.tar.gz
     tar -zxvf flxmlrpc-0.1.4.tar.gz
     cd flxmlrpc-0.1.4
@@ -57,7 +60,7 @@ else
     ./configure --prefix=/usr/local --enable-static
     make
     sudo make install
-    cd ..
+    cd ../..
 fi
 
 
@@ -66,11 +69,13 @@ echo 'Downloading and installing JS8Call...';
 if [ -f "/usr/local/bin/js8call" ]; then
     echo 'JS8Call installed';
 else
+    cd install
     wget http://files.js8call/com/2.2.0/js8call_2.2.0_armhf.deb
     sudo dpkg -i js8call_2.2.0_armhf.deb
 
     sudo apt --fix-broken install
     sudo dpkg -i js8call_2.2.0_armhf.deb
+    cd ..
 fi
 
 echo;
@@ -84,6 +89,7 @@ else
     sudo apt-get -y install cmake
     sudo apt-get -y install libasound2-dev
     sudo apt-get -y install libudev-dev
+    cd install
     git clone https://www.github.com/wb2osz/direwolf.git
 
     cd direwolf
@@ -92,14 +98,14 @@ else
     make -j4
     sudo make install
     make install-conf
-    cd ../..
+    cd ../../..
 
     sudo apt-get -y install ax25-tools
     sudo apt-get -y install ax25-apps
 
     # update AX25 with callsign
     sed -i "s/YourCallSignHere/${callsign}/" ./axports
-    cp ./axports /etc/ax25/axports
+    sudo cp ./axports /etc/ax25/axports
 
 
     ARECORD=$(arecord -l | grep 'USB Audio CODEC')
@@ -117,8 +123,8 @@ else
     RIG='3085' # IC-705
     # run ls -l /dev/serial/by-id to determine the '/dev/ttyXXX' that your rig and GPS are assigned to
     RIG_SERIAL='/dev/ttyACM0'
-    sed -i "s/YourRigNumberHere/${RIG}" ./direwolf.conf
-    sed -i "s/YourRigSerialHere/${RIG_SERIAL}" ./direwolf.conf
+    sed -i "s/YourRigNumberHere/${RIG}/" ./direwolf.conf
+    sed -i "s/YourRigSerialHere/${RIG_SERIAL}/" ./direwolf.conf
 
 fi
 
@@ -127,11 +133,14 @@ echo 'Downloading and installing Ardop TNC (beta)...';
 if [ -f ${HOME}/.asoundrc ]; then
     echo 'Ardop exists';
 else
+    cd install
     wget -O /tmp/ardopc http://www.cantab.net/users/john.wiseman/Downloads/Beta/piardopc;
     sudo install /tmp/ardopc /usr/local/bin;
     if [ "$(grep 'pcm\.ARDOP' ${HOME}/.asoundrc |wc -l)" -lt "1" ]; then
         echo 'pcm.ARDOP {type rate slave {pcm "hw:CARD=CODEC,DEV=0" rate 48000}}' >> ${HOME}/.asoundrc;
     fi
+
+    cd ..
 fi
 
 echo;
@@ -139,8 +148,11 @@ echo 'Downloading and Installing Pat (pre-release 0.10.0)...';
 if [ -f "/usr/bin/pat" ]; then
     echo 'pat installed';
 else
+    cd install
     wget -O /tmp/pat_0.10.0_linux_armhf.deb https://github.com/la5nta/pat/releases/download/v0.10.0/pat_0.10.0_linux_armhf.deb;
     sudo dpkg -i /tmp/pat_0.10.0_linux_armhf.deb;
+
+    cd ..
 fi
 
 echo;
@@ -151,7 +163,7 @@ if [ -e "${HOME}/.wl2k/config.json" ]; then
   echo '(Note that run_pat.sh may not work as intended if you use an existing config.)';
   read continue;
 fi;
-wget -O ${HOME}/.wl2k/config.json https://raw.githubusercontent.com/KyleBrandon/pat-on-a-pi/main/pat_config.json;
+cp ./pat_config.json ${HOME}/.wl2k/config.json 
 
 sed -i "s/YourCallsignHere/${callsign}/" ${HOME}/.wl2k/config.json;
 
