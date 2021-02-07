@@ -11,6 +11,31 @@ sudo apt update;
 #sudo apt upgrade; # You can select No here, if you're worried that upgrades might break something, or you don't think you have time.
 #Really, I think any packages that need to get upgraded for this will get upgraded as we install it.
 
+HAMLIB_VER="4.0"
+FLXML_VER="0.1.4"
+FLRIG_VER="1.3.54"
+JS8CALL_VER="2.2.0"
+PAT_VER="0.10.0"
+
+ARECORD=$(arecord -l | grep 'USB Audio CODEC')
+RECORDCARD=$(echo ${ARECORD} | grep -o 'card [0-9]*')
+RECORDDEVICE=$(echo ${ARECORD} | grep -o 'device [0-9]*')
+AREC_CARD_NUM=$(echo ${RECORDCARD} | cut -d' ' -f2)
+AREC_DEVICE_NUM=$(echo ${RECORDDEVICE} | cut -d' ' -f2)
+
+# run `rigctl -l` to find a list of other radio models and swap the 373 here with that number.
+# Note that this script was writtin for and currently only supports the IC-705.
+# You'll need to additionally update your Ardop config and also your ~/.wl2k/config.json file to use a different rig.
+RIG='3085' # IC-705
+# run ls -l /dev/serial/by-id to determine the '/dev/ttyXXX' that your rig and GPS are assigned to
+RIG_SERIAL='\/dev\/ttyACM1'
+
+
+# Gather callsign and Winlink password for later
+read -p 'Enter your callsign: ' callsign;
+read -sp 'Enter your Winlink password (will not echo): ' wlpass;
+read -p 'Enter your Grid Square: ' gridsquare;
+read -p 'Would you like to set up GPS as a time source (optional, beta)? [y/N]: ' setup_gps_time;
 
 sudo apt-get -y install gcc
 sudo apt-get -y install g++
@@ -27,8 +52,8 @@ cp ./runpat.desktop ${HOME}/Desktop/runpat.desktop
 chmod u+x ./gps_time_setup.sh
 mkdir -p ./install
 
-# gather the callsign of the user
-read -p 'Enter your callsign: ' callsign;
+
+
 
 echo;
 echo 'Installing hamlib (rigctl)';
@@ -40,9 +65,9 @@ else
     cd install
 
     # pull down hamlib 4.0 for the IC-705
-    wget https://sourceforge.net/projects/hamlib/files/hamlib/4.0/hamlib-4.0.tar.gz
-    tar -xzf hamlib-4.0.tar.gz
-    cd hamlib-4.0
+    wget https://sourceforge.net/projects/hamlib/files/hamlib/${HAMLIB_VER}/hamlib-${HAMLIB_VER}.tar.gz
+    tar -xzf hamlib-${HAMLIB_VER}.tar.gz
+    cd hamlib-${HAMLIB_VER}
     ./configure
     make
     sudo make install
@@ -63,9 +88,9 @@ else
 
     # save install
     pushd .
-    wget http://www.w1hkj.com/files/flxmlrpc/flxmlrpc-0.1.4.tar.gz
-    tar -zxvf flxmlrpc-0.1.4.tar.gz
-    cd flxmlrpc-0.1.4
+    wget http://www.w1hkj.com/files/flxmlrpc/flxmlrpc-${FLXML_VER}.tar.gz
+    tar -zxvf flxmlrpc-${FLXML_VER}.tar.gz
+    cd flxmlrpc-${FLXML_VER}
     ./configure --prefix=/usr/local --enable-static
     make
     sudo make install
@@ -74,9 +99,9 @@ else
     # return to install
     popd
 
-    wget http://www.w1hkj.com/files/flrig/flrig-1.3.53.tar.gz
-    tar -zxvf flrig-1.3.53.tar.gz
-    cd flrig-1.3.53
+    wget http://www.w1hkj.com/files/flrig/flrig-${FLRIG_VER}.tar.gz
+    tar -zxvf flrig-${FLRIG_VER}.tar.gz
+    cd flrig-${FLRIG_VER}
     ./configure --prefix=/usr/local --enable-static
     make
     sudo make install
@@ -94,11 +119,11 @@ else
     # save pi-home
     pushd .
     cd install
-    wget http://files.js8call/com/2.2.0/js8call_2.2.0_armhf.deb
-    sudo dpkg -i js8call_2.2.0_armhf.deb
+    wget http://files.js8call.com/${JS8CALL_VER}/js8call_${JS8CALL_VER}_armhf.deb
+    sudo dpkg -i js8call_${JS8CALL_VER}_armhf.deb
 
     sudo apt --fix-broken install
-    sudo dpkg -i js8call_2.2.0_armhf.deb
+    sudo dpkg -i js8call_${JS8CALL_VER}_armhf.deb
 
     # return to pi-home
     popd
@@ -133,21 +158,10 @@ else
     sudo cp ./axports /etc/ax25/axports
 
     # Update Direwolf config
-    ARECORD=$(arecord -l | grep 'USB Audio CODEC')
-    RECORDCARD=$(echo ${ARECORD} | grep -o 'card [0-9]*')
-    RECORDDEVICE=$(echo ${ARECORD} | grep -o 'device [0-9]*')
-    AREC_CARD_NUM=$(echo ${RECORDCARD} | cut -d' ' -f2)
-    AREC_DEVICE_NUM=$(echo ${RECORDDEVICE} | cut -d' ' -f2)
     sed -i "s/YourAudioCardNum/${AREC_CARD_NUM}/" ./direwolf.conf
     sed -i "s/YourAudioDeviceNum/${AREC_DEVICE_NUM}/" ./direwolf.conf
     sed -i "s/YourCallSignHere/${callsign}/" ./direwolf.conf
 
-    # run `rigctl -l` to find a list of other radio models and swap the 373 here with that number.
-    # Note that this script was writtin for and currently only supports the IC-705.
-    # You'll need to additionally update your Ardop config and also your ~/.wl2k/config.json file to use a different rig.
-    RIG='3085' # IC-705
-    # run ls -l /dev/serial/by-id to determine the '/dev/ttyXXX' that your rig and GPS are assigned to
-    RIG_SERIAL='/dev/ttyACM0'
     sed -i "s/YourRigNumberHere/${RIG}/" ./direwolf.conf
     sed -i "s/YourRigSerialHere/${RIG_SERIAL}/" ./direwolf.conf
 
@@ -163,8 +177,8 @@ else
     pushd .
     cd install
 
-    wget -O /tmp/ardopc http://www.cantab.net/users/john.wiseman/Downloads/Beta/piardopc;
-    sudo install /tmp/ardopc /usr/local/bin;
+    wget http://www.cantab.net/users/john.wiseman/Downloads/Beta/piardopc;
+    sudo install ./ardopc /usr/local/bin;
     if [ "$(grep 'pcm\.ARDOP' ${HOME}/.asoundrc |wc -l)" -lt "1" ]; then
         echo 'pcm.ARDOP {type rate slave {pcm "hw:CARD=CODEC,DEV=0" rate 48000}}' >> ${HOME}/.asoundrc;
     fi
@@ -181,8 +195,8 @@ else
     pushd .
     cd install
 
-    wget -O /tmp/pat_0.10.0_linux_armhf.deb https://github.com/la5nta/pat/releases/download/v0.10.0/pat_0.10.0_linux_armhf.deb;
-    sudo dpkg -i /tmp/pat_0.10.0_linux_armhf.deb;
+    wget https://github.com/la5nta/pat/releases/download/v${PAT_VER}/pat_${PAT_VER}_linux_armhf.deb;
+    sudo dpkg -i pat_${PAT_VER}_linux_armhf.deb;
 
     popd
 fi
@@ -197,17 +211,17 @@ if [ -e "${HOME}/.wl2k/config.json" ]; then
 fi;
 cp ./pat_config.json ${HOME}/.wl2k/config.json 
 
+# update pat config with callsign
 sed -i "s/YourCallsignHere/${callsign}/" ${HOME}/.wl2k/config.json;
 
-read -sp 'Enter your Winlink password (will not echo): ' wlpass;
+# update pat config with Winlink password
 sed -i "s/YourWinlinkPasswordHere/${wlpass}/" ${HOME}/.wl2k/config.json;
 unset wlpass;
 echo;
 
-read -p 'Enter your Grid Square: ' gridsquare;
+# update pat config with gridsquare
 sed -i "s/YourGridSquareHere/${gridsquare}/" ${HOME}/.wl2k/config.json;
 
-read -p 'Would you like to set up GPS as a time source (optional, beta)? [y/N]: ' setup_gps_time;
 if [ "$setup_gps_time" == "y" ] || [ "$setup_gps_time" == "Y" ]; then
   ./gps_time_setup.sh;
 fi
